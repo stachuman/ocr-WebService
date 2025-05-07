@@ -1,0 +1,15 @@
+[Unit]
+Description=OCR Web Service
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/root/PdfToOcr
+ExecStart=/bin/bash -c "source /root/miniconda3/bin/activate ocr && python /root/PdfToOcr/pdf_server.py"
+Restart=always
+RestartSec=5
+Environment="PATH=/root/miniconda3/envs/ocr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target
