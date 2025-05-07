@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF OCR Service</title>
+    <style>
+        /* Layout */
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* NEW – explicit 70 / 30 ratio */
+        .left {
+            flex: 0 0 70%;   /* 70 % szerokości strony */
+        }
+        .right {
+            flex: 0 0 30%;   /* pozostałe 30 % */
+        }
+
+        /* Elements */
+        #pdfFrame {
+            width: 100%;     /* wypełnia 70 % kontenera */
+            height: 500px;
+            border: none;
+        }
+        #renderedImg {
+            max-width: 100%;
+            height: 500px;
+            display: block;
+            object-fit: contain;
+        }
+        #loadingMessage {
+            display: none;
+            font-weight: bold;
+            color: red;
+        }
+        .instructions {
+            width: 100%;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            width: 0;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            border-radius: 4px;
+        }
+        .button-group {
+            margin: 10px 0;
+        }
+        .button-group button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF OCR Service</h1>
+
+    <div>
+        <h2>Upload PDF</h2>
+        <input type="file" id="pdfFile" accept="application/pdf">
+        <button onclick="uploadPDF()">Upload</button>
+        <span id="pageCountInfo"></span>
+    </div>
+
+    <div>
+        <h2>Upload Image</h2>
+        <input type="file" id="imageFile" accept="image/*">
+        <button onclick="uploadIMAGE()">Upload</button>
+    </div>
+
+    <!--
+        Kontener flex w proporcji 70 / 30
+    -->
+    <div class="container">
+        <div class="left">
+            <h2>PDF Viewer</h2>
+            <iframe id="pdfFrame"></iframe>
+            <div>
+                <label for="pageNumber">Strona:</label>
+                <input type="number" id="pageNumber" min="1" value="1">
+                <button onclick="renderPage()">Przygotuj stronę</button>
+            </div>
+        </div>
+        <div class="right">
+            <h2>Rendered Page</h2>
+            <img id="renderedImg" alt="Rendered page image">
+        </div>
+    </div>
+
+    <div>
+        <h2>Instrukcja rozpoznawania</h2>
+        <input type="text" id="ocrInstruction" class="instructions" placeholder="Podaj instrukcję dla LLM">
+        <div class="button-group">
+            <button onclick="ocrCurrentPage()">Rozpoznaj wybraną stronę</button>
+            <button onclick="ocrAllPages()">Rozpoznaj cały dokument PDF</button>
+            <button onclick="cancelProcessing()" id="cancelBtn" style="display: none;">Anuluj przetwarzanie</button>
+        </div>
+        
+        <!-- Progress bar -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+        <div id="progressInfo"></div>
+    </div>
+
+    <div>
+        <button onclick="cleanText()">Wyczyść tekst</button>
+        <button onclick="clearText()">Usuń cały tekst</button>
+    </div>
+
+    <div>
+        <h2>OCR Result</h2>
+        <p id="loadingMessage">Processing... Please wait.</p>
+        <textarea id="ocrText" rows="10" cols="100"></textarea>
+    </div>
+
+    <div>
+        <h2>Instrukcja podsumowania</h2>
+        <input type="text" id="summaryInstruction" class="instructions" placeholder="Podaj instrukcję dla podsumowania">
+        <button onclick="ocrSummary()">Wygeneruj podsumowanie</button>
+    </div>
+
+    <div>
+        <h2>Summary</h2>
+        <textarea id="ocrSummary" rows="5" cols="100"></textarea>
+    </div>
+
+    <script>
+        let currentFilename = '';
+        let currentType = '';
+        let totalPages = 0;
+        let processingCancelled = false;
+        
+        document.getElementById('ocrInstruction').value = "Read all text in the image. Do not add any comments. Text is in Polish.";
+        document.getElementById('summaryInstruction').value = "Summarize text in Polish. Make it no more than 4 sentences.";
+
+        function uploadPDF() {
+            const fileInput = document.getElementById('pdfFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a PDF file.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        currentFilename = encodeURIComponent(data.filename);
+                        currentType = 'pdf';
+                        document.getElementById('pdfFrame').src = `/uploads/${currentFilename}`;
+                        
+                        // Display page count if available
+                        if (data.page_count) {
+                            totalPages = data.page_count;
+                            document.getElementById('pageCountInfo').textContent = 
+                                `Document has ${data.page_count} pages`;
+                        } else {
+                            document.getElementById('pageCountInfo').textContent = '';
+                        }
+                    }
+                });
+        }
+
+        function uploadIMAGE() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select an image file.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/uploadImage', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        currentFilename = encodeURIComponent(data.filename);
+                        currentType = 'img';
+                        document.getElementById('pdfFrame').src = '';
+                        document.getElementById('renderedImg').src = `/uploads/${currentFilename}?t=${new Date().getTime()}`;
+                        document.getElementById('pageCountInfo').textContent = '';
+                    }
+                });
+        }
+
+        function renderPage() {
+            if (currentType === 'pdf') {
+                let pageNumber = parseInt(document.getElementById('pageNumber').value);
+                fetch('/render_page', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: decodeURIComponent(currentFilename), page_number: pageNumber })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.image_url) {
+                        document.getElementById('renderedImg').src = data.image_url + '?t=' + new Date().getTime();
+                    }
+                });
+            }
+        }
+
+        function cleanText() {
+            const orgtext = document.getElementById('ocrText').value;
+            fetch('/cleanText', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: orgtext })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ocrText').value = data.cleaned_text;
+            });
+        }
+        
+        function clearText() {
+            document.getElementById('ocrText').value = '';
+        }
+
+        function ocrCurrentPage() {
+            const instruction = document.getElementById('ocrInstruction').value;
+            const pageNumber = parseInt(document.getElementById('pageNumber').value) - 1;
+            let imagePath = `page_${pageNumber}.png`;
+            if (currentType == 'img') {
+                imagePath = decodeURIComponent(currentFilename);
+            }
+            document.getElementById('loadingMessage').style.display = 'block';
+            fetch('/ocr_page', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_path: imagePath, instruction: instruction, type: currentType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('ocrText').value += " " + data.text;
+            });
+        }
+        
+        function ocrAllPages() {
+            if (currentType !== 'pdf') {
+                alert('Please upload a PDF document first');
+                return;
+            }
+            
+            // Setup progress display
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            document.getElementById('progressInfo').textContent = 'Starting document processing...';
+            
+            // Reset progress state
+            processingCancelled = false;
+            updateProgressBar(0);
+            
+            // Start processing from page 0
+            processNextPage(0);
+        }
+        
+        function processNextPage(pageNumber) {
+            if (processingCancelled) {
+                finishProcessing('Processing cancelled');
+                return;
+            }
+            
+            const instruction = document.getElementById('ocrInstruction').value;
+            
+            fetch('/process_all_pages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: decodeURIComponent(currentFilename),
+                    instruction: instruction,
+                    page_number: pageNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    finishProcessing('Error occurred during processing');
+                    return;
+                }
+                
+                // Add page text to result
+                if (data.page_text) {
+                    document.getElementById('ocrText').value += `\n[Page ${pageNumber + 1}]\n${data.page_text}`;
+                }
+                
+                // Update progress
+                document.getElementById('progressInfo').textContent = 
+                    `Processing page ${data.current_page + 1} of ${data.total_pages}`;
+                updateProgressBar(data.progress);
+                
+                // Render current page in viewer
+                document.getElementById('pageNumber').value = pageNumber + 1;
+                renderPage();
+                
+                // Process next page or finish
+                if (data.status === 'complete') {
+                    finishProcessing('All pages processed successfully');
+                    updateProgressBar(100);
+                } else {
+                    // Process next page after a small delay to allow UI updates
+                    setTimeout(() => {
+                        processNextPage(pageNumber + 1);
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                console.error('Error processing page:', error);
+                finishProcessing('Error: ' + error.message);
+            });
+        }
+        
+        function updateProgressBar(percentage) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = Math.round(percentage) + '%';
+        }
+        
+        function finishProcessing(message) {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('progressInfo').textContent = message;
+            document.getElementById('cancelBtn').style.display = 'none';
+            // Clean the text automatically after processing
+            cleanText();
+        }
+        
+        function cancelProcessing() {
+            processingCancelled = true;
+            document.getElementById('progressInfo').textContent = 'Cancelling...';
+        }
+
+        function ocrSummary() {
+            const instruction = document.getElementById('summaryInstruction').value;
+            document.getElementById('loadingMessage').style.display = 'block';
+            fetch('/ocr_summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: document.getElementById('ocrText').value, instruction: instruction })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('ocrSummary').value = data.text || '';
+            });
+        }
+    </script>
+</body>
+</html>
