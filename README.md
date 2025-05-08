@@ -1,10 +1,10 @@
-# 📝 PDF OCR Web Service
+# PDF OCR Web Service
 
 A lightweight web application for OCR (Optical Character Recognition) of PDF documents and images powered by **Qwen2.5‑VL‑7B‑Instruct** (vision‑language) and **Qwen2.5‑7B‑Instruct** (text‑only) models.
 
 ---
 
-## ✨ Key Features
+## Key Features
 - Upload PDFs or standalone images.
 - Render any PDF page at 150 DPI and run OCR on the current page or the whole document.
 - On‑the‑fly text clean‑up and Polish summaries generated with an LLM.
@@ -24,7 +24,7 @@ A lightweight web application for OCR (Optical Character Recognition) of PDF doc
 
 ---
 
-## 📦 Python Dependencies
+## Python Dependencies
 
 | Library | Notes |
 |---------|-------|
@@ -40,7 +40,7 @@ A ready‑to‑use **Conda environment** file is provided below (`environment.ym
 
 ---
 
-## 🧪 Quick Installation
+## Quick Installation
 
 ```bash
 # 1. Install Miniconda (skip if already installed)
@@ -74,7 +74,7 @@ pip install qwen-vl-utils[decord]==0.0.8 bitsandbytes flask pillow pymupdf
 
 ---
 
-## 🚀 Running
+## Running
 
 ```bash
 conda activate ocr
@@ -87,8 +87,8 @@ For production, enable the provided **systemd** unit (`ocr.service`).
 
 ---
 
-## 📁 Data Paths
-Uploads + page PNGs are stored in `/mnt/Public/skany/uploads/`.  
+## Data Paths
+Uploads + page PNGs are stored in `./uploads/`.  
 Make sure this directory exists and is writable.
 
 ---
@@ -128,7 +128,7 @@ conda env create -f environment.yml
 
 ---
 
-## 📝 References
+## References
 - Qwen2.5‑VL model card citeturn1view0
 - Transformers docs for Qwen2.5‑VL citeturn5view0
 
