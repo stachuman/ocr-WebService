@@ -1,171 +1,137 @@
-# PDF OCR Web Service
+# 📝 PDF OCR Web Service
 
-A lightweight and powerful web-based service for **OCR (Optical Character Recognition)** of PDF documents and images using **Qwen2.5-VL** and **Qwen2.5-7B** models. It allows users to:
-
-- Upload and browse PDFs or images
-- Select and render specific PDF pages
-- Run OCR on any page or full document
-- Clean and structure recognized text
-- Generate summaries of the extracted content
+A lightweight web application for OCR (Optical Character Recognition) of PDF documents and images powered by **Qwen2.5‑VL‑7B‑Instruct** (vision‑language) and **Qwen2.5‑7B‑Instruct** (text‑only) models.
 
 ---
 
-## Requirements
-
-### System Requirements
-- Linux-based OS (Ubuntu, Debian, etc.)
-- NVIDIA GPU with at least 24GB VRAM (e.g., RTX 3090, RTX 4090)
-- CUDA Toolkit 12.2 or compatible installed
-
-### Software Requirements
-- Python 3.10+
-- Conda (Miniconda or Anaconda recommended)
-- `git`, `curl`, `wget`, `gcc`, `make`, and other development tools
-- NVIDIA drivers and GPU-enabled PyTorch
+## ✨ Key Features
+- Upload PDFs or standalone images.
+- Render any PDF page at 150 DPI and run OCR on the current page or the whole document.
+- On‑the‑fly text clean‑up and Polish summaries generated with an LLM.
+- Responsive UI with progress bar and cancellation.
 
 ---
 
-## Environment Setup
+## ⚙️ System Requirements
+| Item | Minimum | Recommended |
+|------|---------|-------------|
+| **OS** | Linux (Ubuntu/Debian 12 tested) | Any modern Linux |
+| **GPU** | NVIDIA 24 GB VRAM (RTX 3090/4090) | ≥ 48 GB VRAM for long docs |
+| **CUDA** | 12.1 + |
+| **Python** | 3.10 or 3.11 |
 
-Follow the steps below to install and configure the service.
+> **Why CUDA 12.1 +?** `flash_attention_2` (used by Qwen2.5‑VL for faster inference) requires a recent CUDA toolkit citeturn9search2.
 
-### 1. Install Miniconda
+---
 
-If not already installed:
+## 📦 Python Dependencies
+
+| Library | Notes |
+|---------|-------|
+| **PyTorch** ( GPU build) | `torch` ≥ 2.2 compiled for CU 12.1 |
+| **flash‑attn** (optional → speed) | `pip install flash-attn --no-build-isolation` |
+| **transformers** (dev) | Install **from source** to get `qwen2_5_vl` classes citeturn1view0 |
+| **accelerate** | Device placement & 4‑bit loading |
+| **qwen‑vl‑utils[decord]==0.0.8** | Helper for `process_vision_info` citeturn1view0 |
+| **bitsandbytes** | 4‑bit quantisation support |
+| **flask**, **pillow**, **pymupdf** | Web server, image IO, PDF rendering |
+
+A ready‑to‑use **Conda environment** file is provided below (`environment.yml`).
+
+---
+
+## 🧪 Quick Installation
 
 ```bash
-cd ~
+# 1. Install Miniconda (skip if already installed)
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh
-```
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+eval "$($HOME/miniconda3/bin/conda shell.bash hook)"
 
-Restart your shell and initialize Conda:
-
-```bash
-source ~/miniconda3/bin/activate
-conda init bash
-```
-
-### 2. Clone the Repository
-
-```bash
+# 2. Clone the repo and create the env
 git clone https://github.com/yourusername/PdfToOcr.git
 cd PdfToOcr
+conda env create -f environment.yml
+conda activate ocr
 ```
 
-### 3. Create the Conda Environment
+### Manual package install (alternative)
 
 ```bash
 conda create -n ocr python=3.10 -y
 conda activate ocr
-```
 
-### 4. Install Dependencies
-
-```bash
+# GPU PyTorch + FlashAttention build
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-pip install transformers accelerate bitsandbytes
-pip install flask pillow pymupdf
-```
+pip install flash-attn --no-build-isolation   # optional but recommended
 
-Optionally install other utilities:
+# Latest Transformers w/ Qwen2.5‑VL
+pip install git+https://github.com/huggingface/transformers accelerate
 
-```bash
-pip install gunicorn
+# Rest of the stack
+pip install qwen-vl-utils[decord]==0.0.8 bitsandbytes flask pillow pymupdf
 ```
 
 ---
 
-## Running the Web Service
-
-### 1. Manual Startup (for testing)
+## 🚀 Running
 
 ```bash
 conda activate ocr
 python pdf_server.py
 ```
 
-Service will be available at: [http://localhost:5000](http://localhost:5000)
+Navigate to **http://localhost:5000**.
 
-### 2. Install as Systemd Service (for production)
+For production, enable the provided **systemd** unit (`ocr.service`).
 
-Create the service file:
+---
+
+## 📁 Data Paths
+Uploads + page PNGs are stored in `/mnt/Public/skany/uploads/`.  
+Make sure this directory exists and is writable.
+
+---
+
+## 🔍 environment.yml
+
+```yaml
+name: ocr
+channels:
+  - conda-forge
+  - nvidia
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      # GPU PyTorch CU12.1 wheels
+      - torch==2.2.*+cu121 torchvision==0.17.* torchaudio==2.2.* --index-url https://download.pytorch.org/whl/cu121
+      # Speed‑ups
+      - flash-attn
+      - bitsandbytes
+      # HF ecosystem – dev transformers for Qwen2.5‑VL
+      - git+https://github.com/huggingface/transformers
+      - accelerate
+      - qwen-vl-utils[decord]==0.0.8
+      # App stack
+      - flask
+      - pillow
+      - pymupdf
+```
+
+Create the env with:
 
 ```bash
-sudo nano /etc/systemd/system/ocr.service
-```
-
-Paste the following:
-
-```ini
-[Unit]
-Description=OCR Web Service
-After=network.target
-
-[Service]
-User=root
-Group=root
-WorkingDirectory=/root/PdfToOcr
-ExecStart=/bin/bash -c "source /root/miniconda3/bin/activate ocr && python /root/PdfToOcr/pdf_server.py"
-Restart=always
-RestartSec=5
-Environment="PATH=/root/miniconda3/envs/ocr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start the service:
-
-```bash
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl enable ocr
-sudo systemctl start ocr
-```
-
-Check logs:
-
-```bash
-journalctl -u ocr -f
+conda env create -f environment.yml
 ```
 
 ---
 
-## Upload Directory
-
-All uploaded files and temporary images are stored in:
-
-```
-./uploads/
-```
-
-Ensure this directory exists and is writable by the service user.
+## 📝 References
+- Qwen2.5‑VL model card citeturn1view0
+- Transformers docs for Qwen2.5‑VL citeturn5view0
 
 ---
 
-## Models Used
-
-- **OCR Model:** `Qwen/Qwen2.5-VL-7B-Instruct`  
-- **Summary Model:** `Qwen/Qwen2.5-7B-Instruct`
-
-Models are automatically downloaded via `transformers` on first use. Ensure you have a working internet connection and enough GPU memory.
-
----
-
-## Cleaning Up GPU Memory
-
-The system is optimized to release GPU memory after each operation using `torch.cuda.empty_cache()` and `gc.collect()` to minimize resource usage between requests.
-
----
-
-## UI Features
-
-- Intuitive file upload for PDF & images
-- Embedded PDF viewer
-- Render PDF pages as high-resolution images
-- Interactive OCR with instruction customization
-- Summarization with LLM
-- Full document processing with progress bar and cancellation support
-
----
+Happy scanning! 📄✨
