@@ -1,4 +1,4 @@
-# 📝 PDF OCR Web Service
+# PDF OCR Web Service
 
 A lightweight and powerful web-based service for **OCR (Optical Character Recognition)** of PDF documents and images using **Qwen2.5-VL** and **Qwen2.5-7B** models. It allows users to:
 
@@ -10,14 +10,14 @@ A lightweight and powerful web-based service for **OCR (Optical Character Recogn
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 
-### ✅ System Requirements
+### System Requirements
 - Linux-based OS (Ubuntu, Debian, etc.)
 - NVIDIA GPU with at least 24GB VRAM (e.g., RTX 3090, RTX 4090)
 - CUDA Toolkit 12.2 or compatible installed
 
-### ✅ Software Requirements
+### Software Requirements
 - Python 3.10+
 - Conda (Miniconda or Anaconda recommended)
 - `git`, `curl`, `wget`, `gcc`, `make`, and other development tools
@@ -25,7 +25,7 @@ A lightweight and powerful web-based service for **OCR (Optical Character Recogn
 
 ---
 
-## 🧪 Environment Setup
+## Environment Setup
 
 Follow the steps below to install and configure the service.
 
@@ -76,7 +76,7 @@ pip install gunicorn
 
 ---
 
-## 🚀 Running the Web Service
+## Running the Web Service
 
 ### 1. Manual Startup (for testing)
 
@@ -132,19 +132,19 @@ journalctl -u ocr -f
 
 ---
 
-## 📁 Upload Directory
+## Upload Directory
 
 All uploaded files and temporary images are stored in:
 
 ```
-/mnt/Public/skany/uploads/
+./uploads/
 ```
 
 Ensure this directory exists and is writable by the service user.
 
 ---
 
-## 📦 Models Used
+## Models Used
 
 - **OCR Model:** `Qwen/Qwen2.5-VL-7B-Instruct`  
 - **Summary Model:** `Qwen/Qwen2.5-7B-Instruct`
@@ -153,13 +153,13 @@ Models are automatically downloaded via `transformers` on first use. Ensure you 
 
 ---
 
-## 🧹 Cleaning Up GPU Memory
+## Cleaning Up GPU Memory
 
 The system is optimized to release GPU memory after each operation using `torch.cuda.empty_cache()` and `gc.collect()` to minimize resource usage between requests.
 
 ---
 
-## 📸 UI Features
+## UI Features
 
 - Intuitive file upload for PDF & images
 - Embedded PDF viewer
@@ -169,7 +169,3 @@ The system is optimized to release GPU memory after each operation using `torch.
 - Full document processing with progress bar and cancellation support
 
 ---
-
-## 🧑‍💻 Development Notes
-
-Make sure `qwen_vl_utils.py` is present in the project root and contains the function `process_vision_info()` used by the VL model.
