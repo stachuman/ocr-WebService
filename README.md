@@ -20,7 +20,7 @@ A lightweight web application for OCR (Optical Character Recognition) of PDF doc
 | **CUDA** | 12.1 + |
 | **Python** | 3.10 or 3.11 |
 
-> **Why CUDA 12.1 +?** `flash_attention_2` (used by Qwen2.5‑VL for faster inference) requires a recent CUDA toolkit citeturn9search2.
+> **Why CUDA 12.1 +?** `flash_attention_2` (used by Qwen2.5‑VL for faster inference) requires a recent CUDA toolkit
 
 ---
 
@@ -30,9 +30,9 @@ A lightweight web application for OCR (Optical Character Recognition) of PDF doc
 |---------|-------|
 | **PyTorch** ( GPU build) | `torch` ≥ 2.2 compiled for CU 12.1 |
 | **flash‑attn** (optional → speed) | `pip install flash-attn --no-build-isolation` |
-| **transformers** (dev) | Install **from source** to get `qwen2_5_vl` classes citeturn1view0 |
+| **transformers** (dev) | Install **from source** to get `qwen2_5_vl` classes |
 | **accelerate** | Device placement & 4‑bit loading |
-| **qwen‑vl‑utils[decord]==0.0.8** | Helper for `process_vision_info` citeturn1view0 |
+| **qwen‑vl‑utils[decord]==0.0.8** | Helper for `process_vision_info` |
 | **bitsandbytes** | 4‑bit quantisation support |
 | **flask**, **pillow**, **pymupdf** | Web server, image IO, PDF rendering |
 
@@ -129,8 +129,8 @@ conda env create -f environment.yml
 ---
 
 ## References
-- Qwen2.5‑VL model card citeturn1view0
-- Transformers docs for Qwen2.5‑VL citeturn5view0
+- Qwen2.5‑VL model card 
+- Transformers docs for Qwen2.5‑VL
 
 ---
 
